@@ -1,0 +1,436 @@
+# https://dscompounding.wordpress.com DCF Model only for educational purposes
+# developer Dave Soma
+# if you find it useful, you can contribuite throught ENS address davesoma.eth
+#Disclaimer: The information contained on this website is for general information and educational purposes only. It is not intended as a substitute for legal, commercial and/or financial advice from a licensed professional.
+
+# Every section is introduced by an hashtag title with a link to the blog article dealing with the topic of the computation
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+class Company():
+
+# Declaring variable
+    def __init__(self, ticker, revenues_growth_rate_deviation, required_rate_of_return, terminal_growth_rate, share_outstanding, 
+                 fiancials_positions_last5yrs,financials_positions_lt_debt, cash_pos, net_income_pos, equity_pos, 
+                 debt_pos, revenues_pos, gross_profit_pos, opcf_pos, capex_pos, sbc_pos, gross_margin_deviation, 
+                 opcf_margin_deviation, capex_decision, cf_multiple_exit, share_count):
+
+      self.ticker = ticker
+      self.financial_data = financial_data
+      self.revenues_growth_rate_deviation = revenues_growth_rate_deviation
+      self.required_rate_of_return = required_rate_of_return
+      self.terminal_growth_rate = terminal_growth_rate
+      self.share_outstanding = share_outstanding
+      self.financials_positions_last5yrs = financials_positions_last5yrs
+      self.financials_positions_lt_debt = financials_positions_lt_debt
+      self.cash_pos = cash_pos
+      self.net_income_pos = net_income_pos
+      self.equity_pos = equity_pos
+      self.debt_pos = debt_pos
+      self.revenues_pos = revenues_pos
+      self.gross_profit_pos = gross_profit_pos
+      self.opcf_pos = opcf_pos
+      self.capex_pos = capex_pos
+      self.sbc_pos = sbc_pos
+      self.gross_margin_deviation = gross_margin_deviation
+      self.opcf_margin_deviation = opcf_margin_deviation
+      self.capex_decision = capex_decision
+      self.cf_multiple_exit = cf_multiple_exit
+      self.share_count = share_count
+
+# net debt
+# 16. Balance Sheet Analysis https://dscompounding.wordpress.com/2021/09/08/16-balance-sheet-analysis/
+    def net_debt(self):
+      
+      lt_debt = financial_data.iloc[financials_positions_lt_debt, financials_positions_last5yrs[4]]
+      cash = financial_data.iloc[cash_pos, financials_positions_last5yrs[4]]
+      net_debt = lt_debt - cash
+
+      return net_debt
+
+# ROIC mean
+# 16. Balance Sheet Analysis https://dscompounding.wordpress.com/2021/09/08/16-balance-sheet-analysis/
+    def roic_mean(self):
+      net_income = np.array(financial_data.iloc[net_income_pos, financials_positions_last5yrs])
+      equity = np.array(financial_data.iloc[equity_pos, financials_positions_last5yrs])
+      debt = np.array(financial_data.iloc[debt_pos, financials_positions_last5yrs])
+      roic = net_income / (equity + debt)
+      roic_mean = np.mean(roic)
+      
+      return roic_mean
+
+# gross margin last 5 years
+# 15. Income statement analysis https://dscompounding.wordpress.com/2021/06/04/15-income-statement-analysis/
+    def gross_margin_last_5yrs(self):
+        
+      revenues = np.array(financial_data.iloc[revenues_pos, financials_positions_last5yrs])
+      gross_profit = np.array(financial_data.iloc[gross_profit_pos, financials_positions_last5yrs])
+      gross_margin = gross_profit/revenues
+    
+      return gross_margin
+
+# gross margin mean last 5yrs
+#15. Income statement analysis https://dscompounding.wordpress.com/2021/06/04/15-income-statement-analysis/
+    def gross_margin(self):
+        
+      gross_margin = self.gross_margin_last_5yrs()
+
+      gross_margin_mean = float(np.mean(gross_margin))
+
+      return gross_margin_mean
+
+# operating cash flow margin last 5yrs net of Stock Based Compensation 
+# 17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+    def opcf_margin_last_5yrs(self):
+    
+      gross_profit = np.array(financial_data.iloc[gross_profit_pos, financials_positions_last5yrs])
+      opcf_gross = np.array(financial_data.iloc[opcf_pos, financials_positions_last5yrs])
+      sbc = np.array(financial_data.iloc[sbc_pos, financials_positions_last5yrs])
+      opcf = np.subtract(opcf_gross, sbc)
+      opcf_margin = opcf/gross_profit
+        
+      return opcf_margin
+
+# operating cash flow margin of the last 5yrs
+# 17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+    def opcf_margin(self):
+      
+      opcf_margin = self.opcf_margin_last_5yrs()
+
+      opcf_margin_mean = float(np.mean(opcf_margin))
+
+      return opcf_margin_mean
+
+# Capex growth rate past 5 yrs mean
+# 17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+    def capex_past_growth_rate(self):
+
+      capex = np.array(financial_data.iloc[capex_pos, financials_positions_last5yrs])
+      capex_past_growth_rate = (capex[len(capex)-1]/capex[0])**(1/len(capex)) - 1 
+
+      return capex_past_growth_rate
+
+# Maintenance_capex aproximated by the Bruce Greenwald formula
+# 17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+    def maintenance_capex(self):
+    
+      revenues = np.array(financial_data.iloc[revenues_pos, financials_positions_last5yrs]) 
+      capex = np.array(financial_data.iloc[capex_pos, financials_positions_last5yrs])
+      capex_revenues_ratio = capex/revenues
+      capex_revenues_mean = np.mean(capex_revenues_ratio)
+      revenues_increase_y1y0 = revenues[4] - revenues[3]
+      maintenance_capex = capex_revenues_mean*revenues_increase_y1y0
+
+      return  maintenance_capex
+
+# Revenues_growth_rate
+# 15. Income statement analysis https://dscompounding.wordpress.com/2021/06/04/15-income-statement-analysis/
+    def revenues_growth_rate(self):
+
+      revenues = np.array(financial_data.iloc[revenues_pos, financials_positions_last5yrs])
+      revenues_growth_rate = float(((revenues[len(revenues)-1]/revenues[0])**(1/len(revenues)))-1)
+
+      return revenues_growth_rate
+
+# Next 5 yrs revenues forecast
+# 15. Income statement analysis https://dscompounding.wordpress.com/2021/06/04/15-income-statement-analysis/
+    def revenues(self):
+        
+      revenues_growth = self.revenues_growth_rate()
+
+      revenues_growth = revenues_growth + 1
+      revenues_0 = np.array(financial_data.iloc[revenues_pos, financials_positions_last5yrs[4]]) 
+      revenues_1 = revenues_0*(revenues_growth+revenues_growth_rate_deviation[0])
+      revenues_2 = revenues_1*(revenues_growth+revenues_growth_rate_deviation[1])
+      revenues_3 = revenues_2*(revenues_growth+revenues_growth_rate_deviation[2])
+      revenues_4 = revenues_3*(revenues_growth+revenues_growth_rate_deviation[3])
+      revenues_5 = revenues_4*(revenues_growth+revenues_growth_rate_deviation[4])
+
+      return round(revenues_1,2), round(revenues_2,2), round(revenues_3,2) ,round(revenues_4,2), round(revenues_5,2)
+
+# Next 5 yrs gross margin forecast
+# 15. Income statement analysis https://dscompounding.wordpress.com/2021/06/04/15-income-statement-analysis/
+    def gross_margin_forecast(self):
+        
+      gross_margin_mean = self.gross_margin()
+        
+      gross_margin_forecast_yr1 = gross_margin_mean+gross_margin_deviation[0]
+      gross_margin_forecast_yr2 = gross_margin_mean+gross_margin_deviation[1]
+      gross_margin_forecast_yr3 = gross_margin_mean+gross_margin_deviation[2]
+      gross_margin_forecast_yr4 = gross_margin_mean+gross_margin_deviation[3]
+      gross_margin_forecast_yr5 = gross_margin_mean+gross_margin_deviation[4]
+        
+      return round(gross_margin_forecast_yr1,2), round(gross_margin_forecast_yr2,2), round(gross_margin_forecast_yr3,2), round(gross_margin_forecast_yr4,2), round(gross_margin_forecast_yr5,2)
+
+# Next 5 yrs operating cash flow margin forecast
+# 17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+    def opcf_margin_forecast(self):
+        
+      opcf_margin_mean = self.opcf_margin()
+        
+      opcf_margin_forecast_yr1 = round(opcf_margin_mean+opcf_margin_deviation[0],2)
+      opcf_margin_forecast_yr2 = round(opcf_margin_mean+opcf_margin_deviation[1],2)
+      opcf_margin_forecast_yr3 = round(opcf_margin_mean+opcf_margin_deviation[2],2)
+      opcf_margin_forecast_yr4 = round(opcf_margin_mean+opcf_margin_deviation[3],2)
+      opcf_margin_forecast_yr5 = round(opcf_margin_mean+opcf_margin_deviation[4],2)
+        
+      return round(opcf_margin_forecast_yr1,2), round(opcf_margin_forecast_yr2,2), round(opcf_margin_forecast_yr3,2), round(opcf_margin_forecast_yr4,2), round(opcf_margin_forecast_yr5,2)
+  
+# next 5yrs opcf based on future margins assumptions
+# 17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+    def operating_cashflow(self):
+
+      revenues_1, revenues_2, revenues_3 ,revenues_4, revenues_5 = self.revenues()
+      gross_margin_forecast_yr1, gross_margin_forecast_yr2, gross_margin_forecast_yr3, gross_margin_forecast_yr4, gross_margin_forecast_yr5 = self.gross_margin_forecast()
+      opcf_margin_forecast_yr1, opcf_margin_forecast_yr2, opcf_margin_forecast_yr3, opcf_margin_forecast_yr4, opcf_margin_forecast_yr5 = self.opcf_margin_forecast()
+    
+      operating_cashflow_yr1 = revenues_1*gross_margin_forecast_yr1*opcf_margin_forecast_yr1
+      operating_cashflow_yr2 = revenues_2*gross_margin_forecast_yr2*opcf_margin_forecast_yr2
+      operating_cashflow_yr3 = revenues_3*gross_margin_forecast_yr3*opcf_margin_forecast_yr3
+      operating_cashflow_yr4 = revenues_4*gross_margin_forecast_yr4*opcf_margin_forecast_yr4
+      operating_cashflow_yr5 = revenues_5*gross_margin_forecast_yr5*opcf_margin_forecast_yr5
+
+      return round(operating_cashflow_yr1,2), round(operating_cashflow_yr2,2), round(operating_cashflow_yr3,2), round(operating_cashflow_yr4,2), round(operating_cashflow_yr5,2)
+
+# Next 5 yrs capital expenditure forecast
+# 17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+    def capex_forecast (self):
+
+      capex = np.array(financial_data.iloc[capex_pos, financials_positions_last5yrs[4]])
+      capex_past_growth_rate = self.capex_past_growth_rate()
+    
+      capex_past_growth_rate = capex_past_growth_rate + 1  
+      capex_0   = capex
+      capex_yr1 = capex_0*capex_past_growth_rate
+      capex_yr2 = capex_yr1*capex_past_growth_rate
+      capex_yr3 = capex_yr2*capex_past_growth_rate
+      capex_yr4 = capex_yr3*capex_past_growth_rate
+      capex_yr5 = capex_yr4*capex_past_growth_rate
+
+      return round(capex_yr1,2), round(capex_yr2,2), round(capex_yr3,2), round(capex_yr4,2), round(capex_yr5,2)
+
+
+# Next 5yrs maintain capex needed to defend the moat
+# 17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+    def maintenance_capex_forecast(self):
+
+      capex_past_growth_rate = self.capex_past_growth_rate()
+      capex = np.array(financial_data.iloc[capex_pos, financials_positions_last5yrs[4]])
+    
+      if self.capex_decision == "maintenance":
+            maintenance_capex_0 = maintenance_capex
+      else:
+            maintenance_capex_0 = capex
+
+      capex_past_growth_rate = capex_past_growth_rate + 1
+      maintenance_capex_yr1 = maintenance_capex_0*capex_past_growth_rate
+      maintenance_capex_yr2 = maintenance_capex_yr1*capex_past_growth_rate
+      maintenance_capex_yr3 = maintenance_capex_yr2*capex_past_growth_rate
+      maintenance_capex_yr4 = maintenance_capex_yr3*capex_past_growth_rate
+      maintenance_capex_yr5 = maintenance_capex_yr4*capex_past_growth_rate
+
+      return round(maintenance_capex_yr1,2), round(maintenance_capex_yr2,2), round(maintenance_capex_yr3,2), round(maintenance_capex_yr4,2), round(maintenance_capex_yr5,2)
+
+          
+# Next 5 yrs forecast owner earnings
+# 17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+    def owners_earnings(self):
+
+      required_rate_of_return = self.required_rate_of_return
+      terminal_growth_rate = self.terminal_growth_rate
+      share_outstanding = self.share_outstanding
+
+      operating_cashflow_yr1, operating_cashflow_yr2, operating_cashflow_yr3, operating_cashflow_yr4, operating_cashflow_yr5 = self.operating_cashflow()
+      maintenance_capex_yr1, maintenance_capex_yr2, maintenance_capex_yr3, maintenance_capex_yr4, maintenance_capex_yr5 = self.maintenance_capex_forecast()
+      net_debt = self.net_debt()
+
+      ow_e1 = (operating_cashflow_yr1 + maintenance_capex_yr1)/ (1+required_rate_of_return)**1
+      ow_e2 = (operating_cashflow_yr2 + maintenance_capex_yr2)/ (1+required_rate_of_return)**2
+      ow_e3 = (operating_cashflow_yr3 + maintenance_capex_yr3)/ (1+required_rate_of_return)**3
+      ow_e4 = (operating_cashflow_yr4 + maintenance_capex_yr4)/ (1+required_rate_of_return)**4
+      ow_e5 = (operating_cashflow_yr5 + maintenance_capex_yr5)/ (1+required_rate_of_return)**5
+
+      return round(ow_e1,2), round(ow_e2,2), round(ow_e3,2), round(ow_e4,2), round(ow_e5,2)
+
+# Next 5yrs number of shares forecast
+# 7. How the companies reward us https://dscompounding.wordpress.com/2021/01/23/7-how-the-companies-reward-us/
+    def share_count_yr5(self):
+        
+      share_outstanding_yr0 = self.share_outstanding
+      share_count = self.share_count
+        
+      share_outstanding_yr1 = share_outstanding_yr0 + (share_outstanding_yr0*share_count)
+      share_outstanding_yr2 = share_outstanding_yr1 + (share_outstanding_yr1*share_count)
+      share_outstanding_yr3 = share_outstanding_yr2 + (share_outstanding_yr2*share_count)
+      share_outstanding_yr4 = share_outstanding_yr3 + (share_outstanding_yr3*share_count)
+      share_outstanding_yr5 = share_outstanding_yr4 + (share_outstanding_yr4*share_count)
+        
+      return share_outstanding_yr5
+
+# Fair value multiple exit 
+# 18. Intrinsic Value https://dscompounding.wordpress.com/2022/04/24/18-intrinsic-value-discounted-cash-flow/
+    def fair_value_multiple(self):
+      
+      ow_e1, ow_e2, ow_e3, ow_e4, ow_e5 = self.owners_earnings()
+        
+      share_outstanding_yr5 = self.share_count_yr5()
+    
+      fair_value_multiple = (ow_e5 * cf_multiple_exit / share_outstanding_yr5) / (1+required_rate_of_return)**5
+    
+      return fair_value_multiple
+        
+
+# Fair value
+# 18. Intrinsic Value https://dscompounding.wordpress.com/2022/04/24/18-intrinsic-value-discounted-cash-flow/
+    def fair_value(self):
+
+      ow_e1, ow_e2, ow_e3, ow_e4, ow_e5 = self.owners_earnings()
+
+      ow_tv = (ow_e5*(1+terminal_growth_rate))/(required_rate_of_return-terminal_growth_rate)
+
+# Sum of all the cash flow net of debt and divided by the number of share outstanding  
+# 18. Intrinsic Value https://dscompounding.wordpress.com/2022/04/24/18-intrinsic-value-discounted-cash-flow/
+      fair_value = (ow_e1 + ow_e2 + ow_e3 + ow_e4 + ow_e5 + ow_tv) - net_debt
+      fair_value_ps = fair_value / share_outstanding
+    
+# Result  
+      return fair_value_ps
+      
+     
+# Create a table with the data needed
+# The code needs an excel spreadsheet 
+# It is set up to upload the excel file from https://roic.ai
+# Follow the instruction of the site to obtain the free access to financial data (I've no connection with the team behind the site but I find it useful for the purpose of my DCF).
+financial_data = pd.read_excel('/BABAdataext.xlsx')
+
+#Insert personalized parameters (Ticker, revenue growth, capex growth, Required rate of return, terminal growth rate, share_outstanding)
+ticker = 'BABA'
+years = [0,1,2,3,4]
+required_rate_of_return = 0.125
+terminal_growth_rate = 0.03
+share_outstanding = 2710000000
+
+#Insert your favourite standard deviation for the future parameters based on the mean of the last 5 yrs
+#11. Stories and numbers https://dscompounding.wordpress.com/2021/02/19/11-stories-and-numbers/
+revenues_growth_rate_deviation = [-0.1,-0.15,-0.15,-0.15,-0.15]
+gross_margin_deviation = [-0.05,-0.05,0,0.05,0.1]
+opcf_margin_deviation = [0,0,0.05,0.05,0.05]
+
+#Decide if you want to detract only the maintenance capex (Bruce Greenwald Formula)
+#17. Cash Flow Statement Analysis https://dscompounding.wordpress.com/2021/12/08/17-cash-flow-statement/
+capex_decision = "maintenance"
+
+#Insert an exit multiple for the exit multiple version of the calculation
+#15. Income statement analysis https://dscompounding.wordpress.com/2021/06/04/15-income-statement-analysis/
+cf_multiple_exit = 20
+
+#Forecast of future buybacks
+#7. How the companies reward us https://dscompounding.wordpress.com/2021/01/23/7-how-the-companies-reward-us/
+share_count = -0.005
+
+#If you have one, insert the Total adressable market of the company (not mandatory)
+TAM = 270000000000
+
+#Insert dataframe positions
+financials_positions_last5yrs = [12,13,14,15,16]
+financials_positions_lt_debt = 53
+cash_pos = 34
+net_income_pos = 22 
+equity_pos = 64
+debt_pos = 59
+revenues_pos = 1
+gross_profit_pos = 3
+opcf_pos = 78 
+capex_pos = 79
+sbc_pos = 71 
+
+
+my_company = Company(ticker, revenues_growth_rate_deviation, required_rate_of_return, terminal_growth_rate, share_outstanding, 
+                     financials_positions_last5yrs, financials_positions_lt_debt, cash_pos, net_income_pos, 
+                     equity_pos, debt_pos, revenues_pos, gross_profit_pos, opcf_pos, capex_pos, sbc_pos, gross_margin_deviation,
+                     opcf_margin_deviation, capex_decision, cf_multiple_exit, share_count)
+ 
+
+#Ticker
+print(f"User variable: Ticker {my_company.ticker}")
+
+#Net Debt
+net_debt = my_company.net_debt()
+print(f"Net Debt {net_debt}")
+
+#Revenues growth rate
+revenues_growth_rate = round(my_company.revenues_growth_rate(),2)
+print(f"Revenues Growth Rate {revenues_growth_rate}")
+
+#Gross Margin
+gross_margin = round(my_company.gross_margin(),2)
+print(f"Gross Margin {gross_margin}")
+
+#Operating Cash Flow Margin from Gross Profit
+opcf_margin = round(my_company.opcf_margin(),2)
+print(f"OPCF from Gross Profit Margin {opcf_margin}")
+
+#Revenues past 5 yrs Growth rate
+revenues_growth_rate = round(my_company.revenues_growth_rate(),2)
+print(f"Revenues Growth Rate {revenues_growth_rate}")
+
+#Capex past 5yrs growth rate
+capex_past_growth_rate = round(my_company.capex_past_growth_rate(),2)
+print(f"Capex past 5yrs growth rate {capex_past_growth_rate}")
+maintenance_capex = round(my_company.maintenance_capex(),2)
+
+#Return on invested capital last 5 yrs mean
+roic_mean = round(my_company.roic_mean(),2)
+print(f"Return on invested capital {roic_mean}")
+
+#Fair Value
+fair_value = round(my_company.fair_value(),2)
+print(f"Fair Value {fair_value}")
+
+#Fair Value exit multiple
+fair_value_multiple = my_company.fair_value_multiple()
+print(f"Fair Value Exit Multiple {fair_value_multiple}")
+
+
+#graph
+revenues_past = np.array(financial_data.iloc[1, financials_positions_last5yrs])
+revenues_forecast= my_company.revenues()
+revenues = np.concatenate((revenues_past,revenues_forecast), axis = None)
+TAM = [TAM, TAM, TAM, TAM, TAM, TAM, TAM, TAM, TAM, TAM]
+plt.plot(revenues, label = "rev_for")
+plt.plot(TAM, label = "TAM")
+plt.title("Revenues")
+plt.legend()
+plt.show()
+gross_margin_last_5yrs = my_company.gross_margin_last_5yrs()
+gross_margin_forecast = my_company.gross_margin_forecast()
+gross_margin_10yrs = np.concatenate((gross_margin_last_5yrs, gross_margin_forecast), axis = None)
+opcf_margin_last_5yrs = my_company.opcf_margin_last_5yrs()
+opcf_margin_forecast = my_company.opcf_margin_forecast()
+opcf_margin_10yrs = np.concatenate((opcf_margin_last_5yrs, opcf_margin_forecast), axis = None)
+plt.title("Forecast margins")
+plt.plot(gross_margin_10yrs, label = "gm_margin")
+plt.plot(opcf_margin_10yrs, label = "opcf_margin")
+plt.legend()
+plt.show()
+print(f"GM Margin {gross_margin_10yrs}")
+print(f"OPCF Margin {opcf_margin_10yrs}")
+plt.title("Forecast profit")
+plt.plot(revenues_forecast, label = "rev_for")
+operating_cashflow = my_company.operating_cashflow()
+plt.plot(operating_cashflow, label = "opcf")
+owners_earnings = my_company.owners_earnings()
+plt.plot(owners_earnings, label = "ow_ear")
+capex_forecast = my_company.capex_forecast()
+plt.plot(capex_forecast, label = "capex")
+maintenance_capex_forecast = my_company.maintenance_capex_forecast()
+plt.plot(maintenance_capex_forecast, label = "m_capex")
+plt.legend()
+plt.show()
+print(f"Revenues forecast {revenues_forecast}")
+print(f"Operating cashflow {operating_cashflow}")
+print(f"Owner earnings {owners_earnings}")
+print(f"Capex{capex_forecast}")
+print(f"Maintenance_capex{maintenance_capex_forecast}")
